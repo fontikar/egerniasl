@@ -1,12 +1,10 @@
 setwd("/home/ubuntu/gitrepo/egerniasl/")
 
 #load library you need
-library(plyr)
-library(lme4)
-library(MASS)
+
 library(MCMCglmm)
 
-assocdat <- read.csv("data/task2_final.csv", stringsAsFactors = FALSE)
+assocdat <- read.csv("output/data/task2_final.csv", stringsAsFactors = FALSE)
 
 assocdat$LizardID <- as.factor(assocdat$LizardID)
 assocdat$Treatment <- as.factor(assocdat$Treatment)
