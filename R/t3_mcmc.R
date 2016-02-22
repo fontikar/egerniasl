@@ -1,4 +1,4 @@
-setwd("~/Dropbox/social learning/output/")
+setwd("/home/ubuntu/gitrepo/egerniasl")
 
 #load library you need
 library(plyr)
