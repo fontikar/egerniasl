@@ -19,4 +19,4 @@ probcor.1<-MCMCglmm(Correct ~ Treatment*Trial, random = ~us(1+Trial):LizardID, f
 
 summary(probcor.1)
 
-saveRDS(probcor.1, file="output/t2_probcormod.1")
+saveRDS(probcor.1, file="output/t3_probcormod.1")
