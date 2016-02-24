@@ -20,3 +20,9 @@ probcor.1<-MCMCglmm(Correct ~ Treatment*Trial, random = ~us(1+Trial):LizardID, f
 summary(probcor.1)
 
 saveRDS(probcor.1, file="output/t3_probcormod.1")
+
+correctonly.2<-MCMCglmm(Choose.only.correct.dish ~ Treatment*Trial, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 2000000, thin = 5000, prior=prior.test, burnin = 15000, data=revdat, verbose= T)
+
+summary(probcor.1)
+
+saveRDS(correctonly.2, file="output/t3_correctonly.1")
