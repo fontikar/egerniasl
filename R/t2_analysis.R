@@ -208,7 +208,24 @@ autocorr.diag(probcor.1$VCV)
 heidel.diag(probcor.1$VCV)  
 geweke.diag(probcor.1$VCV)
 
+# Robustness of learning criteria
+split1<-split(assocdat, assocdat$LizardID)
 
+
+Robust<-function(x){
+{
+  start<-sum(x$lt == 1)+1
+  test_1<-x[start:nrow(x),"Correct"]
+  aftertrials<-length(test_1) 
+  correct_after<-sum(test_1 == 1)
+  propcorrect_after<-round((sum(test_1 == 1))/(length(test_1)),2) 
+}
+vec<-data.frame(start,aftertrials,correct_after,propcorrect_after)
+}
+
+Criteria_robust<-lapply(split1, function(x) Robust(x))# 3 lizards below 80% mark
+
+split1
 
               
               

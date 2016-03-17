@@ -195,5 +195,22 @@ trialdat<-ddply(.data=revdat, .(LizardID, Treatment), summarise, Number_of_Trial
 write.csv(trialdat, "Reversal_Table.csv")
 getwd()
               
-              
+# Robustness of learning criteria
+split1<-split(revdat, revdat$LizardID)
+
+
+Robust<-function(x){
+{
+  start<-sum(x$lt == 1)+1
+  test_1<-x[start:nrow(x),"Correct"]
+  aftertrials<-length(test_1) 
+  correct_after<-sum(test_1 == 1)
+  propcorrect_after<-round((sum(test_1 == 1))/(length(test_1)),2) 
+}
+vec<-data.frame(start,aftertrials,correct_after,propcorrect_after)
+}
+
+t3_Criteria_robust<-lapply(split1, function(x) Robust(x))# 3 lizards below 80% mark
+
+split1              
               
