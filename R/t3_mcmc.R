@@ -18,12 +18,24 @@ prior.test<- list(R = list(V =1,fix=1, nu = 0.002), G = list(G1 = list(V = diag(
 
 probcor.1<-MCMCglmm(Correct ~ Treatment*Trial, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 2000000, thin = 1000, prior=prior.test, burnin = 15000, data=revdat, verbose= T)
 
-summary(probcor.1)
 
 saveRDS(probcor.1, file="output/t3_probcormod.1")
 
 correctonly.2<-MCMCglmm(Choose.only.correct.dish ~ Treatment*Trial, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 2000000, thin = 1000, prior=prior.test, burnin = 15000, data=revdat, verbose= T)
 
-summary(probcor.1)
 
 saveRDS(correctonly.2, file="output/t3_correctonly.1")
+
+#Interaction removed
+
+probcor.1.inrm<-MCMCglmm(Correct ~ Treatment+Trial, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 2000000, thin = 1000, prior=prior.test, burnin = 15000, data=revdat, verbose= T)
+
+
+saveRDS(probcor.1.inrm, file="output/t3_probcormod.2")
+
+correctonly.2.inrm<-MCMCglmm(Choose.only.correct.dish ~ Treatment+Trial, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 2000000, thin = 1000, prior=prior.test, burnin = 15000, data=revdat, verbose= T)
+
+
+saveRDS(correctonly.2.inrm, file="output/t3_correctonly.2")
+
+
