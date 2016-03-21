@@ -8,6 +8,7 @@ assocdat <- read.csv("output/data/task2_final.csv", stringsAsFactors = FALSE)
 
 assocdat$LizardID <- as.factor(assocdat$LizardID)
 assocdat$Treatment <- as.factor(assocdat$Treatment)
+assocdat$Batch <- as.factor(assocdat$Batch)
 assocdat$Date <-as.Date(assocdat$Date, format="%m/%d/%Y")
 assocdat$Time <- as.factor(assocdat$Time)
 assocdat$Correct <- as.factor(assocdat$Correct)
