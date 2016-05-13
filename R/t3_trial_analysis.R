@@ -106,6 +106,46 @@ lines(spline(t3_prob_con_inrm~Trial2), lty=2, lwd=2)
 
 legend(x=1.5, y=0.2, legend=c("Social", "Control"), pch=c(19, 1), col= c("black"), cex= 1.2, text.font=1)  
 
+#Predicting from model
+
+#Predict for Treatment
+t3_probcor_dat <- predict(t3_probcormod.2, interval="confidence")
+pred_revdat <- cbind(revdat[,1:12], t3_probcor_dat)
+revdat_probcor_pred <- ddply(pred_revdat, .(Treatment, Trial), summarise, meanFit = mean(fit), LWR = (mean(lwr)), UPR=(mean(upr)))
+revdat_probcor_pred
+
+#Graph for Treatment 
+#polygon time
+x1<-seq(1:20)
+x2<-order(-x1)
+x3<-c(x1,x2)
+
+revpred_probcor_dec<-revdat_probcor_pred[with(revdat_probcor_pred, order(Treatment, -Trial)),]
+
+t3.y1.probcor.c<-revdat_probcor_pred[revdat_probcor_pred$Treatment == "0",4] #LWR control
+t3.y2.probcor.c<-revpred_probcor_dec[revpred_probcor_dec$Treatment == "0",5] #UPR control
+t3.y3.probcor.c <-c(t3.y1.probcor.c,t3.y2.probcor.c)
+
+t3.y1.probcor.s<-revdat_probcor_pred[revdat_probcor_pred$Treatment == "1",4] #LWR social
+t3.y2.probcor.s<-revpred_probcor_dec[revpred_probcor_dec$Treatment == "1",5] #UPR social
+t3.y3.probcor.s <-c(t3.y1.probcor.s,t3.y2.probcor.s)
+
+pdf("output/fig/t2_probcor.pdf") 
+plot(Correct~Trial, revdat, ylim=c(0,1), xlim=c(1,20), ann = FALSE, type='n')
+mtext("Trial", side = 1, line = 3, cex=1.2)
+mtext("Predicted probability of correct choice", side = 2, line = 3, cex=1.2)
+
+polygon(x3, t3.y3.probcor.c, col=rgb(0,0,0,0.4), border=NA) #control
+polygon(x3, t3.y3.probcor.s, col=rgb(190,190,190,120, max=255), border=NA) #social
+
+lines(meanFit~Trial, data = revdat_probcor_pred[revdat_probcor_pred$Treatment=="0",], col="gray27", lwd=3) #control
+lines(meanFit~Trial, data = revdat_probcor_pred[revdat_probcor_pred$Treatment=="1",], col="gray47", lwd=3, lty=2)   
+
+legend(x=15, y=0.20, legend=c("Social", "Control"),pch=c(15,15), col= c(rgb(0,0,0,0.4), rgb(190,190,190,120, max=255)), pt.cex=3, bty="n", y.intersp=2, x.intersp=2, cex=1.2)   
+
+dev.off()
+
+#########################
 
 #Task 3:Probability of flipping correct dish ONLY 
 
@@ -205,3 +245,43 @@ lines(spline(t3_prob_cor_only_con_inrm~Trial2), lty=2, lwd=2)
 
 legend(x=10, y=0.99, legend=c("Social", "Control"), pch=c(19, 1), col= c("black"), cex= 1.2, text.font=1)
 
+#Predicting from model
+
+#Predict for Treatment
+t3_coronly.2_dat <- predict(t3_correctonly.2, interval="confidence")
+revdat <- cbind(revdat[1:12], t3_coronly.2_dat)
+revdat_pred_coronly <- ddply(revdat, .(Treatment, Trial), summarise, meanFit = mean(fit), LWR = (mean(lwr)), UPR=(mean(upr)))
+revdat_pred_coronly
+
+#Graph for Treatment 
+#polygon time
+x1<-seq(1:20)
+x2<-order(-x1)
+t3.x3<-c(x1,x2)
+
+revpred_dec_coronly<-revdat_pred_coronly[with(revdat_pred_coronly, order(Treatment, -Trial)),]
+
+t3.y1.coronly.c<-revdat_pred_coronly[revdat_pred_coronly$Treatment == "0",4] #LWR control
+t3.y2.coronly.c<-revpred_dec_coronly[revpred_dec_coronly$Treatment == "0",5] #UPR control
+t3.y3.coronly.c <-c(t3.y1.coronly.c,t3.y2.coronly.c)
+
+t3.y1.coronly.s<-revdat_pred_coronly[revdat_pred_coronly$Treatment == "1",4] #LWR social 
+t3.y2.coronly.s<-revpred_dec_coronly[revpred_dec_coronly$Treatment == "1",5] #LWR social
+t3.y3.coronly.s <-c(t3.y1.coronly.s,t3.y2.coronly.s)
+
+pdf("output/fig/t2_probcor.pdf") 
+par(mar=c(5,5,4,2))
+plot(Choose.only.correct.dish~Trial, revdat, ylim=c(0,0.5), xlim=c(1,20), ann = FALSE, type='n')
+mtext("Trial", side = 1, line = 3, cex=1.2)
+mtext("Predicted probability of making correct choice only", side = 2, line = 3, cex=1.2)
+
+polygon(t3.x3, t3.y3.coronly.c, col=rgb(0,0,0,0.4), border=NA) #control
+
+polygon(t3.x3, t3.y3.coronly.s, col=rgb(190,190,190,120, max=255), border=NA) #social
+
+lines(meanFit~Trial, data = revdat_pred_coronly[revdat_pred_coronly$Treatment=="0",], col="gray27", lwd=3) #control
+lines(meanFit~Trial, data = revdat_pred_coronly[revdat_pred_coronly$Treatment=="1",], col="gray47", lwd=3, lty=2) 
+
+legend(x=22, y=0.50, legend=c("Social", "Control"),pch=c(15,15), col= c(rgb(0,0,0,0.4), rgb(190,190,190,120, max=255)), pt.cex=3, bty="n", y.intersp=2, x.intersp=2, cex=1.2)   
+
+dev.off()
