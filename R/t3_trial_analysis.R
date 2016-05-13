@@ -249,8 +249,8 @@ legend(x=10, y=0.99, legend=c("Social", "Control"), pch=c(19, 1), col= c("black"
 
 #Predict for Treatment
 t3_coronly.2_dat <- predict(t3_correctonly.2, interval="confidence")
-revdat <- cbind(revdat[1:12], t3_coronly.2_dat)
-revdat_pred_coronly <- ddply(revdat, .(Treatment, Trial), summarise, meanFit = mean(fit), LWR = (mean(lwr)), UPR=(mean(upr)))
+pred_revdat_coronly <- cbind(revdat[1:12], t3_coronly.2_dat)
+revdat_pred_coronly <- ddply(pred_revdat_coronly, .(Treatment, Trial), summarise, meanFit = mean(fit), LWR = (mean(lwr)), UPR=(mean(upr)))
 revdat_pred_coronly
 
 #Graph for Treatment 
@@ -282,6 +282,6 @@ polygon(t3.x3, t3.y3.coronly.s, col=rgb(190,190,190,120, max=255), border=NA) #s
 lines(meanFit~Trial, data = revdat_pred_coronly[revdat_pred_coronly$Treatment=="0",], col="gray27", lwd=3) #control
 lines(meanFit~Trial, data = revdat_pred_coronly[revdat_pred_coronly$Treatment=="1",], col="gray47", lwd=3, lty=2) 
 
-legend(x=22, y=0.50, legend=c("Social", "Control"),pch=c(15,15), col= c(rgb(0,0,0,0.4), rgb(190,190,190,120, max=255)), pt.cex=3, bty="n", y.intersp=2, x.intersp=2, cex=1.2)   
+legend(x=15, y=0.50, legend=c("Social", "Control"),pch=c(15,15), col= c(rgb(0,0,0,0.4), rgb(190,190,190,120, max=255)), pt.cex=3, bty="n", y.intersp=2, x.intersp=2, cex=1.2)   
 
 dev.off()
