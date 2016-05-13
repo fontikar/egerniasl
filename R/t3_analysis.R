@@ -1,7 +1,7 @@
 #Setting working directory
 getwd()
 setwd("C:/Users/xufeng/Dropbox/social learning/output/data")
-#setwd("~/Dropbox/social learning/output/data/")
+setwd("~/Dropbox/Egernia striolata social learning/output/data/")
 
 #load library you need
 library(plyr)
