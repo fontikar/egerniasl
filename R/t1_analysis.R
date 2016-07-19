@@ -1,7 +1,7 @@
 #Setting working directory
 getwd()
 setwd("C:/Users/xufeng/Dropbox/social learning/output/data/")
-#setwd("~/Dropbox/social learning/output/data/")
+setwd("~/Dropbox/Egernia striolata social learning//output/data/")
 
 #load library you need
 library(plyr)
@@ -11,7 +11,7 @@ library(plyr)
 
 #Read data
 instrumdat <- read.csv("task1_final.csv", stringsAsFactors = FALSE)
-head(instrumdat)
+head(instrumdat) #261 obs
 str(instrumdat)
 
 #Changing variable types
@@ -40,29 +40,83 @@ table(instrumdat$Trial)
 
 library(plyr)
 
-proplearndat<- ddply(.data=instrumdat, .(Trial, Treatment), summarise, Number_of_liz_perform_correct=sum(Correct), sample_size = length(Correct), proportion = round((Number_of_liz_perform_correct/sample_size), digits=2))
+proplearndat<- ddply(.data=instrumdat, .(Trial, Treatment), summarise, Number_of_liz_perform_learnt=sum(learnt), sample_size = length(Correct), proportion = round((Number_of_liz_perform_learnt/sample_size), digits=2))
 proplearndat
 
 SLprop <-proplearndat[proplearndat$Treatment == "SL",]
 Cprop <-proplearndat[proplearndat$Treatment == "C",]
 
 #Plotting figure propportion learnt over trials
+pdf("Figure1A-B.pdf", 13,7)
 
-par(mar=c(5, 5, 4, 2) + 0.1)
-plot(proportion~Trial, data=proplearndat, pch=c(1,19), col=("black"), cex=1.5, cex.axis=1.5, ylim = c(0,1), ann=F)
+par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
+
+plot(proportion~Trial, data=proplearndat, pch=c(1,19), col=("black"), cex=1.5, ylim = c(0.5,1), ann=F)
 title(ylab = list("Proportion of sample that learn", cex=1.5),line=3)
-title(xlab = list("Trial", cex=1.5),line=3.2)
-
+title(xlab = list("Trial", cex=1.5),line=2.5)
 
 lines(proportion~Trial, data=SLprop, lwd=2)
 lines(proportion~Trial, data=Cprop, lwd=2, lty=5)
 
-legend(7, 0.2, c("Social", "Control"), lwd = 3, lty= c(1, 5))
+legend(7.5, 0.55, c("Control", "Social"), lty= c(1, 5), pch=c(1,19), cex=1.2, bty='n')
+
+mtext("a)", adj = -0.15, padj = -0.20, cex=1.4)
+
 
 # Mean number of trials taken to learn
 
 sumdat2 <-ddply(.data=instrumdat, .(LizardID, Treatment), summarise, trials_to_learn=sum((lt)), total_trials=length(lt))
 sumdat2
+
+sumdat2$Treatment <-as.character(sumdat2$Treatment)
+sumdat2$Treatment[sumdat2$Treatment == "SL"] <- "1"
+sumdat2$Treatment[sumdat2$Treatment == "C"] <- "0"
+sumdat2$Treatment <-as.factor(sumdat2$Treatment)
+
+str(sumdat2)
+
+task1mod.1<-glm.nb(trials_to_learn~Treatment, data=sumdat2)
+summary(task1mod.1)
+
+newdat <-data.frame(Treatment = c(0, 1))
+newdat$Treatment <- as.factor(newdat$Treatment)
+
+trials_pred <-predict.glm(task1mod.1, type= "response", se.fit = T,newdata=newdat)
+
+newdat$trials_pred <- trials_pred$fit
+newdat$trials_pred_SE <- trials_pred$se.fit
+newdat$trials_pred_U <- trials_pred$fit + trials_pred$se.fit
+newdat$trials_pred_L <- trials_pred$fit - trials_pred$se.fit
+
+#Plotting figure Mean number of trials to learn
+#setwd("~/Dropbox/Egernia striolata social learning/output/fig/")
+
+#pdf("Task1_Meantrials.pdf", 7.66, 7.55)
+
+#par(xaxt="n", mar = c(4, 4.5, 1.5, 2), cex.axis=1.5, mai=c(0.5,0.7,0.5,0.5))
+
+barplot(newdat$trials_pred, ylim = c(0, 10), xlim =c(0,3.5), space=0.5, col=c("white", "grey")) 
+box()
+
+title(ylab = list("Mean number of trials taken to learn", cex=1.5))
+mtext("Control", at= 1, side = 1, line = 1.2 ,cex = 1.5)
+mtext("Social", at=2.5, side =1,line = 1.2, cex= 1.5)
+
+up.x<-c(1,2.5)
+low.x<-up.x
+
+arrows(x0 = up.x, y0 = newdat$trials_pred, x1 = up.x, y1 = newdat$trials_pred_U, length = 0.2, angle = 90, lwd=2)
+arrows(x0 = low.x, y0 = newdat$trials_pred, x1 = low.x, y1 = newdat$trials_pred_L, length = 0.2, angle = 90, lwd=2)
+
+segments(x0 =1, y0=7.5, x1 = 2.6, y1 =7.5, lwd= 2)
+text(x=1.8, y=8, labels="n.s.", cex=1.5, font=1)
+
+mtext("b)", adj = -0.15, padj = -0.2, cex=1.4)
+
+dev.off()
+
+
+#Raw mean number of trials taken to learn
 
 stderror<-function(x){
   sd(x)/(sqrt(length(x)))
@@ -76,6 +130,9 @@ sumdat3
 #Plotting figure Mean number of trials to learn
 
 par(xaxt="n", mar=c(3,6,3,3))
+
+pdf("Task1_Meantrials.pdf", 7.66, 7.55)
+
 barplot(sumdat3$mean_number_trials, ylim = c(0, 10), xlim =c(0,3.5), space=0.5, col=c("white", "grey"), cex.axis = 1.5) 
 box()
 
@@ -92,6 +149,8 @@ arrows(x0 = low.x, y0 = sumdat3$mean_number_trials, x1 = low.x, y1 = sumdat3$low
 segments(x0 =1, y0=7, x1 = 2.6, y1 =7, lwd= 2)
 text(x=1.8, y=7.5, labels="n.s.", cex=1.5, font=1)
 
+dev.off()
+
 
 #Mean latency
 
@@ -106,8 +165,6 @@ latdat2 <-ddply(.data = latdat, .(Treatment), summarise, mean_latency2 = mean(me
 
 latdat2$value <- c(1.5,3.5)
 latdat2
-
-#Plotting figure Mean number of trials to learn
 
 #Model testing difference in latency between treatment
 
