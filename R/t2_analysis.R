@@ -183,31 +183,35 @@ learningphase$LizardID<-factor(learningphase$LizardID)
 str(learningphase)
 
 
-incordat<-ddply(.data=learningphase, .(LizardID,Treatment), summarise, correct_choice=sum((Correct==1)), total=length(Correct), incorrect_choice=total-correct_choice)
-incordat
+incordat<-ddply(.data=learningphase, .(LizardID,Treatment, Batch), summarise, correct_choice=sum((Correct==1)), total=length(Correct), incorrect_choice=total-correct_choice)
 
-stderror<-function(x){
-  sd(x)/(sqrt(length(x)))
-}  
+incordat$Batch <- as.factor(incordat$Batch)
+str(incordat)
 
-meandat<-ddply(.data=incordat, .(Treatment), summarise, mean_incorr=mean(incorrect_choice), se_incorr=stderror(incorrect_choice))
-meandat$value <- c(1.5, 3.5)
-
-incorfit<-glm.nb(incorrect_choice~Treatment, data=incordat)
+incorfit<-glm.nb(incorrect_choice~Treatment+Batch, data=incordat)
 summary(incorfit)
 
-newdat <- data.frame(Treatment = c("C", "SL"))
-incordpred<-predict.glm(incorfit, newdata=newdat, se.fit = TRUE, type = "response")
+incor_newdat <- data.frame(Treatment = c("0", "1"),
+                     Batch = c("1", "1"))
 
-meandat$se_incorr<- incordpred$se.fit
+str(incor_newdat)
 
-meandat$upper <- meandat$mean_incorr+meandat$se_incorr
-meandat$lower <- meandat$mean_incorr-meandat$se_incorr
+incordpred<-predict.glm(incorfit, newdata=incor_newdat, se.fit = TRUE, type = "response")
+
+incor_newdat$se_incorr<- incordpred$se.fit
+incor_newdat$pred<- incordpred$fit
+
+incor_newdat$upper <- incordpred$fit + incordpred$se.fit
+incor_newdat$lower <- incordpred$fit - incordpred$se.fit
+
+#Plotting mean incorrect choices
 
 
-par(xaxt="n", mar=c(3,6,3,3))
+par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
 
-barplot(meandat$mean_incorr, ylim = c(0, 7), xlim =c(0,3.5), space=0.5, col=c("white", "grey"), cex.axis=1.5) 
+pdf("Task2_predictedMeanErrors.pdf", 7, 7)
+
+barplot(incor_newdat$pred, ylim = c(0, 5), xlim =c(0,3.5), space=0.5, col=c("white", "grey"), cex.axis=1.5) 
 box()
 
 title(ylab = list("Mean number of errors", cex=1.5), line =3)
@@ -217,11 +221,15 @@ mtext("Social", at=2.5, side =1,line =1, cex= 1.5)
 up.value<-c(1, 2.5)
 down.value<-up.value
 
-arrows(x0 = up.value, y0 = meandat$mean_incorr, x1 = up.value, y1 = meandat$upper, length = 0.2, angle = 90, lwd=2)
-arrows(x0 = down.value, y0 = meandat$mean_incorr,, x1 = down.value, y1 = meandat$lower, length = 0.2, angle = 90, lwd=2)
+arrows(x0 = up.value, y0 = incor_newdat$pred, x1 = up.value, y1 = incor_newdat$upper, length = 0.2, angle = 90, lwd=2)
+arrows(x0 = down.value, y0 = incor_newdat$pred,, x1 = down.value, y1 = incor_newdat$lower, length = 0.2, angle = 90, lwd=2)
 
-segments(x0 =1, y0=5, x1 = 2.6, y1 =5, lwd= 2)
-text(x=1.8, y=5.5, labels="P < 0.001", cex=1.5, font=1)
+segments(x0 =1, y0=3.5, x1 = 2.6, y1 =3.5, lwd= 2)
+text(x=1.8, y=4, labels="P < 0.001", cex=1.5, font=1)
+
+dev.off()
+
+####Number of trials for each individual 
 
 trialdat<-ddply(.data=assocdat, .(LizardID, Treatment), summarise, Number_of_Trials=max(Trial))
 
