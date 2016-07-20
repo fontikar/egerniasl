@@ -33,75 +33,113 @@ hist(assocdat$log.latency)
 
 #Descriptive statistics
 
-length((unique(assocdat[assocdat$Treatment == "SL",2]))) #n = 15 for social learning treatment lizards
-length((unique(assocdat[assocdat$Treatment == "C",2]))) # n = 13 for control lizards
+length((unique(assocdat[assocdat$Treatment == "1",1]))) #n = 15 for social learning treatment lizards
+length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control lizards
 
 
               #Proportion of lizards that learnt per trial
               table(assocdat$Trial)
           
-              proplearndat<- ddply(.data=assocdat, .(Trial, Treatment), summarise, Number_of_liz_perform_correct=sum(Correct), sample_size = length(Correct), proportion = round((Number_of_liz_perform_correct/sample_size), digits=2))
-              proplearndat
+              assoc_proplearndat <- ddply(.data=assocdat, .(Trial, Treatment), summarise, sample_size = length(Correct))
+              assoc_proplearndat <-assoc_proplearndat[with(assoc_proplearndat, order(Treatment)), ]
               
-              SLprop <-proplearndat[proplearndat$Treatment == "SL",]
-              Cprop <-proplearndat[proplearndat$Treatment == "C",]
+              condata <-assocdat[assocdat$Treatment == "0",]  
+              length(unique(condata$LizardID )) #13 lizards in control
               
-              #Plotting figure propportion learnt over trials
+              con_vec<-as.vector(table(condata$lt, condata$Trial)[1,])
               
-              par(mar=c(5, 5, 4, 2) + 0.1)
-              plot(proportion~Trial, data=proplearndat, pch=c(1,19), col=("black"), cex=1.5, ylim = c(0,1), xlim=c(1,17), ann=F, cex.axis=1.5)
+              socdata <-assocdat[assocdat$Treatment == "1",]  
+              length(unique(socdata$LizardID )) #15 lizards in social
+              
+              soc_vec <-as.vector(table(socdata$lt, socdata$Trial)[1,])
+              
+              assoc_proplearndat$numlearnt <- append(con_vec, soc_vec)
+              
+              assoc_proplearndat$proportion <- assoc_proplearndat$numlearnt/assoc_proplearndat$sample_size
+            
+              SLprop <-assoc_proplearndat[assoc_proplearndat$Treatment == "1",]
+              Cprop <-assoc_proplearndat[assoc_proplearndat$Treatment == "0",]
+              
+              #Plotting figure proportion learnt over trials
+              
+              pdf("Task2_Proplearnt.pdf", 13, 7)
+              
+              par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
+              
+              plot(proportion~Trial, data=assoc_proplearndat, pch=c(1,19), col=("black"), cex=1.5, ylim = c(0,1), xlim=c(1,30), ann=F, cex.axis=1.5, type= "n", xaxt = "n")
+              
+              axis(1, at=c(1:30))
+              
               title(ylab = list("Proportion of sample that learn", cex=1.5),line=3)
               title(xlab = list("Trial number", cex=1.5),line=3)
+              
+              points(proportion~Trial, data=SLprop, cex=1.5, col="black", pch=19)
+              points(proportion~Trial, data=Cprop, cex=1.5, pch=1)
               
               lines(proportion~Trial, data=SLprop, lwd=2)
               lines(proportion~Trial, data=Cprop, lwd=2, lty=5)
               
-legend(12, 0.2, c("Social", "Control"), lwd = 3, lty= c(1, 5))
+              legend(22, 0.10, c("Control", "Social"), lty= c(1, 5), pch=c(1,19), cex=1.2, bty='n')
+
+              mtext("a)", adj = -0.15, padj = -0.2, cex=1.4)
+
+              #dev.off()
 
               # Mean number of trials taken to learn
               
-                t<-assocdat[assocdat$learnt ==1,]
+                assoclearntdat<-assocdat[assocdat$learnt ==1,]
+                length(unique(assoclearntdat$LizardID)) #All lizards learnt
 
-              sumdat2 <-ddply(.data=assocdat, .(LizardID, Treatment), summarise, trials_to_learn=sum((lt)), total_trials=length(lt))
+              sumdat2 <-ddply(.data=assocdat, .(LizardID, Treatment, Batch), summarise, trials_to_learn=sum((lt)), total_trials=length(lt))
               sumdat2
               
-              stderror<-function(x){
-                sd(x)/(sqrt(length(x)))
-              }  
-              
-              sumdat3 <-ddply(.data = sumdat2, .(Treatment), summarise, mean_number_trials = round(mean(trials_to_learn),digits=3), SE=round(stderror(trials_to_learn),digits=3), upper = mean_number_trials+SE, lower = mean_number_trials-SE)
-              
-              sumdat3$value <- c(1.5,3.5)
-              sumdat3
-              
+              str(sumdat2)
+              sumdat2$Batch <- as.factor(sumdat2$Batch)
+              sumdat2$Treatment <- as.factor(sumdat2$Treatment)
               
               #Fit a generalised linear model. Nb = Negative Binomial
               
-              fit_1<-glm.nb(trials_to_learn~Treatment, data=sumdat2)
+              fit_1<-glm.nb(trials_to_learn~Treatment+Batch, data=sumdat2)
               summary(fit_1) 
-            
+              
+              assoc_newdat <-data.frame(Treatment = c(0, 1),
+                                  Batch = rep(1,2))
+              
+              assoc_newdat$Treatment <- as.factor(newdat$Treatment)
+              assoc_newdat$Batch <- as.factor(newdat$Batch)
+              
+              assoc_trials_pred <-predict.glm(fit_1, type= "response", se.fit = T, newdata=assoc_newdat)
+              
+              assoc_newdat$trials_pred <- assoc_trials_pred$fit
+              assoc_newdat$trials_pred_SE <- assoc_trials_pred$se.fit
+              assoc_newdat$trials_pred_U <-assoc_trials_pred$fit + assoc_trials_pred$se.fit
+              assoc_newdat$trials_pred_L <- assoc_trials_pred$fit - assoc_trials_pred$se.fit
               
               #Plotting figure Mean number of trials to learn
               
-              par(xaxt="n", mar=c(3,6,3,3))
-              barplot(sumdat3$mean_number_trials, ylim = c(0,18), xlim =c(0,3.5), space=0.5, col=c("white", "grey"), cex.axis = 1.5) 
+             # par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
+            
+              barplot(assoc_newdat$trials_pred, ylim = c(0,15), xlim =c(0,3.5), space=0.5, col=c("white", "grey"), cex.axis = 1.5) 
               box()
               
               title(ylab = list("Mean number of trials taken to learn", cex=1.5), line = 3)
-              mtext("Control", at= 1, side = 1, line = 1 ,cex = 1.5)
-              mtext("Social", at=2.5, side =1,line =1, cex= 1.5)
+              mtext("Control", at= 1, side = 1, line = 1.2 ,cex = 1.5)
+              mtext("Social", at=2.5, side =1,line =1.2, cex= 1.5)
               
               up.x<-c(1,2.5)
               low.x<-up.x
               
-              arrows(x0 = up.x, y0 = sumdat3$mean_number_trials, x1 = up.x, y1 = sumdat3$upper, length = 0.2, angle = 90, lwd=2)
-              arrows(x0 = low.x, y0 = sumdat3$mean_number_trials, x1 =low.x, y1 = sumdat3$lower, length = 0.2, angle = 90, lwd=2)
+              arrows(x0 = up.x, y0 = assoc_newdat$trials_pred, x1 = up.x, y1 = assoc_newdat$trials_pred_U, length = 0.2, angle = 90, lwd=2)
+              arrows(x0 = low.x, y0 = assoc_newdat$trials_pred, x1 =low.x, y1 = assoc_newdat$trials_pred_L, length = 0.2, angle = 90, lwd=2)
               
-              segments(x0 =1, y0=16, x1 = 2.6, y1 =16, lwd= 2)
-              text(x=1.8, y=17, labels="P < 0.01", cex=1.5, font=1)
-          
+              segments(x0 =1, y0=13.5, x1 = 2.6, y1 =13.5, lwd= 2)
+              text(x=1.8, y=14, labels="P < 0.01", cex=1.5, font=1)
               
-              #Mean latency
+              mtext("b)", adj = -0.15, padj = -0.2, cex=1.4)
+              
+              dev.off()
+              
+              #Mean latency [This is not included in final analysis because it was not scored for all cases]
               
               stderror<-function(x){
                 sd(x)/(sqrt(length(x)))

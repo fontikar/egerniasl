@@ -40,25 +40,51 @@ table(instrumdat$Trial)
 
 library(plyr)
 
-proplearndat<- ddply(.data=instrumdat, .(Trial, Treatment), summarise, Number_of_liz_perform_learnt=sum(learnt), sample_size = length(Correct), proportion = round((Number_of_liz_perform_learnt/sample_size), digits=2))
-proplearndat
+instrum_proplearndat<- ddply(.data=instrumdat, .(Trial, Treatment), summarise, sample_size = length(Correct))
 
-SLprop <-proplearndat[proplearndat$Treatment == "SL",]
-Cprop <-proplearndat[proplearndat$Treatment == "C",]
+instrum_proplearndat$Treatment <- as.character(instrum_proplearndat$Treatment)
+instrum_proplearndat$Treatment[instrum_proplearndat$Treatment == "SL"] <- "1"
+instrum_proplearndat$Treatment[instrum_proplearndat$Treatment == "C"] <- "0"
+instrum_proplearndat$Treatment <- as.factor(instrum_proplearndat$Treatment)
+
+instrum_proplearndat <-instrum_proplearndat[with(instrum_proplearndat, order(Treatment)), ]
+
+in_condata <-instrumdat[instrumdat$Treatment == "C",] 
+length(unique(in_condata$LizardID))
+
+in_con_vec <-as.vector(table(in_condata$lt, in_condata$Trial)[1,])
+
+in_socdata <-instrumdat[instrumdat$Treatment == "SL",]
+length(unique(in_socdata$LizardID))
+
+in_soc_vec <-as.vector(table(in_socdata$lt, in_socdata$Trial)[1,])
+
+instrum_proplearndat$numlearnt <- append(in_con_vec, in_soc_vec)
+
+instrum_proplearndat$proportion <- instrum_proplearndat$numlearnt/instrum_proplearndat$sample_size
+
+SLprop <-instrum_proplearndat[instrum_proplearndat$Treatment == "1",]
+Cprop <-instrum_proplearndat[instrum_proplearndat$Treatment == "0",]
 
 #Plotting figure propportion learnt over trials
 pdf("Figure1A-B.pdf", 13,7)
 
 par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
 
-plot(proportion~Trial, data=proplearndat, pch=c(1,19), col=("black"), cex=1.5, ylim = c(0.5,1), ann=F)
+plot(proportion~Trial, data=instrum_proplearndat, pch=c(1,19), col=("black"), cex=1.5, ylim = c(0,1), ann=F, xaxt = "n", type="n")
+
+axis(1, at=c(1:10))
+
 title(ylab = list("Proportion of sample that learn", cex=1.5),line=3)
 title(xlab = list("Trial", cex=1.5),line=2.5)
+
+points(proportion~Trial, data=SLprop, cex=1.5, col="black", pch=19)
+points(proportion~Trial, data=Cprop, cex=1.5, pch=1)
 
 lines(proportion~Trial, data=SLprop, lwd=2)
 lines(proportion~Trial, data=Cprop, lwd=2, lty=5)
 
-legend(7.5, 0.55, c("Control", "Social"), lty= c(1, 5), pch=c(1,19), cex=1.2, bty='n')
+legend(7.5, 0.1, c("Control", "Social"), lty= c(1, 5), pch=c(1,19), cex=1.2, bty='n')
 
 mtext("a)", adj = -0.15, padj = -0.20, cex=1.4)
 
@@ -114,18 +140,6 @@ text(x=1.8, y=8, labels="n.s.", cex=1.5, font=1)
 mtext("b)", adj = -0.15, padj = -0.2, cex=1.4)
 
 dev.off()
-
-
-#Raw mean number of trials taken to learn
-
-stderror<-function(x){
-  sd(x)/(sqrt(length(x)))
-}  
-
-sumdat3 <-ddply(.data = sumdat2, .(Treatment), summarise, mean_number_trials = round(mean(trials_to_learn),digits=3), SE=round(stderror(trials_to_learn),digits=3), upper = mean_number_trials+SE, lower = mean_number_trials-SE)
-
-sumdat3$value <- c(1.5,3.5)
-sumdat3
 
 #Plotting figure Mean number of trials to learn
 
