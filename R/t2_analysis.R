@@ -102,6 +102,26 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
               fit_1<-glm.nb(trials_to_learn~Treatment+Batch, data=sumdat2)
               summary(fit_1) 
               
+              Table1.B <- data.frame(matrix(ncol=2, nrow=2))
+              rownames(Table1.B) <- c("Intercept", "Treatment (SOC)")
+              colnames(Table1.B) <- c("Est", "SE")
+              
+              summary(fit_1)$coefficients
+              
+              #Est
+              
+              Table1.B[1,1] <- round(summary(fit_1)$coefficients[1,1],2)
+              Table1.B[2,1] <- round(summary(fit_1)$coefficients[2,1],2)
+              
+              #SE
+              
+              Table1.B[1,2] <- round(summary(fit_1)$coefficients[1,2],2)
+              Table1.B[2,2] <- round(summary(fit_1)$coefficients[2,2],2)
+              
+              write.csv(Table1.B, file="Table1.B.csv")
+              
+              ##############################
+              
               assoc_newdat <-data.frame(Treatment = c(0, 1),
                                   Batch = rep(1,2))
               
@@ -191,6 +211,25 @@ str(incordat)
 incorfit<-glm.nb(incorrect_choice~Treatment+Batch, data=incordat)
 summary(incorfit)
 
+Table2 <- data.frame(matrix(ncol=2, nrow=2))
+rownames(Table2) <- c("Intercept", "Treatment (SOC)")
+colnames(Table2) <- c("Est", "SE")
+
+summary(incorfit)$coefficients
+
+#Est
+
+Table2[1,1] <- round(summary(incorfit)$coefficients[1,1],2)
+Table2[2,1] <- round(summary(incorfit)$coefficients[2,1],2)
+
+#SE
+
+Table2[1,2] <- round(summary(incorfit)$coefficients[1,2],2)
+Table2[2,2] <- round(summary(incorfit)$coefficients[2,2],2)
+
+write.csv(Table2, file="/Users/fontikar/Dropbox/egernia striolata social learning/output/tables/Table2.csv")
+
+###############################
 incor_newdat <- data.frame(Treatment = c("0", "1"),
                      Batch = c("1", "1"))
 
