@@ -10,17 +10,34 @@ library(lme4)
 library(plyr)
 
 #Read data
-instrumdat <- read.csv("task1_final.csv", stringsAsFactors = FALSE)
+instrumdat <- read.csv("task1_finaldat.csv", stringsAsFactors = FALSE)
 head(instrumdat) #261 obs
 str(instrumdat)
 
 #Changing variable types
 instrumdat$LizardID <- as.factor(instrumdat$LizardID)
+instrumdat$Batch <- as.factor(instrumdat$Batch)
 instrumdat$Treatment <- as.factor(instrumdat$Treatment)
 instrumdat$Date <-as.Date(instrumdat$Date, format="%m/%d/%Y")
 instrumdat$Time <- as.factor(instrumdat$Time)
 
-str(instrumdat)
+#Getting Batch variable
+
+#batchinfo <- assocdat[,1:2]
+#str(batchinfo)
+#str(instrumdat)
+
+#batchinfo<-unique(batchinfo)
+
+#length(unique(batchinfo$LizardID))  == length(unique(instrumdat$LizardID))
+
+#sort(unique(batchinfo$LizardID)) == sort(unique(instrumdat$LizardID)) 
+
+#instrumdat <- merge(instrumdat, batchinfo, by = "LizardID")
+
+#str(instrumdat)
+
+#write.csv(instrumdat, file ="task1_finaldat.csv")
 
 # Exploration plots
 hist(instrumdat$Latency)
@@ -75,7 +92,7 @@ plot(proportion~Trial, data=instrum_proplearndat, pch=c(1,19), col=("black"), ce
 
 axis(1, at=c(1:10))
 
-title(ylab = list("Proportion of sample that learn", cex=1.5),line=3)
+title(ylab = list("Proportion of sample that learnt", cex=1.5),line=3)
 title(xlab = list("Trial", cex=1.5),line=2.5)
 
 points(proportion~Trial, data=SLprop, cex=1.5, col="black", pch=19)
@@ -91,7 +108,7 @@ mtext("a)", adj = -0.15, padj = -0.20, cex=1.4)
 
 # Mean number of trials taken to learn
 
-sumdat2 <-ddply(.data=instrumdat, .(LizardID, Treatment), summarise, trials_to_learn=sum((lt)), total_trials=length(lt))
+sumdat2 <-ddply(.data=instrumdat, .(LizardID, Treatment, Batch), summarise, trials_to_learn=sum((lt)), total_trials=length(lt))
 sumdat2
 
 sumdat2$Treatment <-as.character(sumdat2$Treatment)
@@ -101,10 +118,32 @@ sumdat2$Treatment <-as.factor(sumdat2$Treatment)
 
 str(sumdat2)
 
-task1mod.1<-glm.nb(trials_to_learn~Treatment, data=sumdat2)
-summary(task1mod.1)
+task1mod.1<-glm.nb(trials_to_learn~Treatment+Batch, data=sumdat2)
 
-newdat <-data.frame(Treatment = c(0, 1))
+Table.1A <- data.frame(matrix(nrow = 3, ncol=2))
+rownames(Table.1A) <- c("Intercept", "Treatment (SOC)", "Batch (2)")
+colnames(Table.1A) <- c("Est", "SE")
+
+summary(task1mod.1)$coefficients
+
+#Est
+
+Table.1A[1,1] <- round(summary(task1mod.1)$coefficients[1,1],2)
+Table.1A[2,1] <- round(summary(task1mod.1)$coefficients[2,1],2)
+Table.1A[3,1] <- round(summary(task1mod.1)$coefficients[3,1],2)
+
+#SE
+
+Table.1A[1,2] <- round(summary(task1mod.1)$coefficients[1,2],2)
+Table.1A[2,2] <- round(summary(task1mod.1)$coefficients[2,2],2)
+Table.1A[3,2] <- round(summary(task1mod.1)$coefficients[3,2],2)
+
+
+write.csv(Table.1A, file = "Table.1A.csv")
+
+##################
+
+newdat <-data.frame(Treatment = c(0, 1), Batch = c(1,1))
 newdat$Treatment <- as.factor(newdat$Treatment)
 
 trials_pred <-predict.glm(task1mod.1, type= "response", se.fit = T,newdata=newdat)
@@ -134,8 +173,8 @@ low.x<-up.x
 arrows(x0 = up.x, y0 = newdat$trials_pred, x1 = up.x, y1 = newdat$trials_pred_U, length = 0.2, angle = 90, lwd=2)
 arrows(x0 = low.x, y0 = newdat$trials_pred, x1 = low.x, y1 = newdat$trials_pred_L, length = 0.2, angle = 90, lwd=2)
 
-segments(x0 =1, y0=7.5, x1 = 2.6, y1 =7.5, lwd= 2)
-text(x=1.8, y=8, labels="n.s.", cex=1.5, font=1)
+segments(x0 =1, y0=8, x1 = 2.6, y1 =8, lwd= 2)
+text(x=1.8, y=8.5, labels="n.s.", cex=1.5, font=1)
 
 mtext("b)", adj = -0.15, padj = -0.2, cex=1.4)
 

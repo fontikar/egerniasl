@@ -18,6 +18,7 @@ str(assocdat)
 
 #Changing variable types
 assocdat$LizardID <- as.factor(assocdat$LizardID)
+assocdat$Batch <- as.factor(assocdat$Batch)
 assocdat$Treatment <- as.factor(assocdat$Treatment)
 assocdat$Date <-as.Date(assocdat$Date, format="%m/%d/%Y")
 assocdat$Time <- as.factor(assocdat$Time)
@@ -38,7 +39,6 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
 
 
               #Proportion of lizards that learnt per trial
-              table(assocdat$Trial)
           
               assoc_proplearndat <- ddply(.data=assocdat, .(Trial, Treatment), summarise, sample_size = length(Correct))
               assoc_proplearndat <-assoc_proplearndat[with(assoc_proplearndat, order(Treatment)), ]
@@ -70,7 +70,7 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
               
               axis(1, at=c(1:30))
               
-              title(ylab = list("Proportion of sample that learn", cex=1.5),line=3)
+              title(ylab = list("Proportion of sample that learnt", cex=1.5),line=3)
               title(xlab = list("Trial number", cex=1.5),line=3)
               
               points(proportion~Trial, data=SLprop, cex=1.5, col="black", pch=19)
@@ -84,6 +84,35 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
               mtext("a)", adj = -0.15, padj = -0.2, cex=1.4)
 
               #dev.off()
+              
+#####Cumulative Hazard analysis
+    library(survival) ; library(KMsurv)
+    
+  #Examples
+              data(tongue); attach(tongue)
+              my.surv <- Surv(time[type==1], delta[type==1])
+              my.fit <- summary(survfit(my.surv~1))
+              H.hat <- -log(my.fit$surv); H.hat <- c(H.hat, H.hat[length(H.hat)])            
+              detach(tongue)
+              
+              data(btrial); attach(btrial)
+              head(btrial); tail(btrial)
+              str(btrial)
+              survdiff(Surv(time, death) ~ im)
+              detach(btrial)
+              
+#Trying my own 
+              assoc_learndat <- ddply(.data=assocdat, .(LizardID, Trial, Treatment), summarise, Event = lt)
+              myfit <- survfit(Surv(assoc_learndat$Trial, assoc_learndat$Event) ~ assoc_learndat$Treatment)
+              myfit2<-summary(myfit)
+              
+              H.hat <- -log(myfit2$surv)
+              H.hat <-c(H.hat, tail(H.hat,1))
+              
+              plot(myfit)
+              
+              plot(myfit$time, H.hat)
+
 
               # Mean number of trials taken to learn
               
@@ -102,8 +131,8 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
               fit_1<-glm.nb(trials_to_learn~Treatment+Batch, data=sumdat2)
               summary(fit_1) 
               
-              Table1.B <- data.frame(matrix(ncol=2, nrow=2))
-              rownames(Table1.B) <- c("Intercept", "Treatment (SOC)")
+              Table1.B <- data.frame(matrix(ncol=2, nrow=3))
+              rownames(Table1.B) <- c("Intercept", "Treatment (SOC)", "Batch (2)")
               colnames(Table1.B) <- c("Est", "SE")
               
               summary(fit_1)$coefficients
@@ -112,11 +141,12 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
               
               Table1.B[1,1] <- round(summary(fit_1)$coefficients[1,1],2)
               Table1.B[2,1] <- round(summary(fit_1)$coefficients[2,1],2)
-              
+              Table1.B[3,1] <- round(summary(fit_1)$coefficients[3,1],2)
               #SE
               
               Table1.B[1,2] <- round(summary(fit_1)$coefficients[1,2],2)
               Table1.B[2,2] <- round(summary(fit_1)$coefficients[2,2],2)
+              Table1.B[3,2] <- round(summary(fit_1)$coefficients[3,2],2)
               
               write.csv(Table1.B, file="Table1.B.csv")
               
@@ -211,8 +241,8 @@ str(incordat)
 incorfit<-glm.nb(incorrect_choice~Treatment+Batch, data=incordat)
 summary(incorfit)
 
-Table2 <- data.frame(matrix(ncol=2, nrow=2))
-rownames(Table2) <- c("Intercept", "Treatment (SOC)")
+Table2 <- data.frame(matrix(ncol=2, nrow=3))
+rownames(Table2) <- c("Intercept", "Treatment (SOC)", "Batch (2)")
 colnames(Table2) <- c("Est", "SE")
 
 summary(incorfit)$coefficients
@@ -221,11 +251,13 @@ summary(incorfit)$coefficients
 
 Table2[1,1] <- round(summary(incorfit)$coefficients[1,1],2)
 Table2[2,1] <- round(summary(incorfit)$coefficients[2,1],2)
+Table2[3,1] <- round(summary(incorfit)$coefficients[3,1],2)
 
 #SE
 
 Table2[1,2] <- round(summary(incorfit)$coefficients[1,2],2)
 Table2[2,2] <- round(summary(incorfit)$coefficients[2,2],2)
+Table2[3,2] <- round(summary(incorfit)$coefficients[3,2],2)
 
 write.csv(Table2, file="/Users/fontikar/Dropbox/egernia striolata social learning/output/tables/Table2.csv")
 

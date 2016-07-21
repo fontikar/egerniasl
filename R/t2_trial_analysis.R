@@ -1,11 +1,57 @@
 
 setwd("~/Dropbox/Egernia striolata social learning/")
+
+assocdat <- read.csv("output/data/task2_final.csv", stringsAsFactors = FALSE)
+head(assocdat)
+str(assocdat)
 library(MCMCglmm)
 
 t2_probcormod.1<-readRDS("output/t2_probcormod.1")
 
 plot(t2_probcormod.1)
-summary(t2_probcormod.1)
+
+summary(t2_probcormod.1$Sol)
+
+####Table 3 for ms####
+
+Table3 <- data.frame(matrix(nrow = 5, ncol = 6))
+colnames(Table3)[1:3] <- "Probcor"
+colnames(Table3)[4:6] <- "Cor only"
+
+rownames(Table3) <- c("Intercept", "Treatment (SOC)", "Trial", "Batch (2)", "Treatment:Trial")
+
+posterior.mode(t2_probcormod.1$Sol)
+probcor_lower_HPD <- HPDinterval(t2_probcormod.1$Sol)[,1]
+probcor_upper_HPD <- HPDinterval(t2_probcormod.1$Sol)[,2]
+
+#Est
+
+Table3[1,1] <- round(posterior.mode(t2_probcormod.1$Sol)[1],2)
+Table3[2,1] <- round(posterior.mode(t2_probcormod.1$Sol)[2],2)
+Table3[3,1] <- round(posterior.mode(t2_probcormod.1$Sol)[3],2)
+Table3[4,1] <- round(posterior.mode(t2_probcormod.1$Sol)[4],2)
+Table3[5,1] <- round(posterior.mode(t2_probcormod.1$Sol)[5],2)
+
+#L
+
+Table3[1,2] <- round(probcor_lower_HPD[1],2)
+Table3[2,2] <- round(probcor_lower_HPD[2],2)
+Table3[3,2] <- round(probcor_lower_HPD[3],2)
+Table3[4,2] <- round(probcor_lower_HPD[4],2)
+Table3[5,2] <- round(probcor_lower_HPD[5],2)
+
+#U
+
+Table3[1,3] <- round(probcor_upper_HPD[1],2)
+Table3[2,3] <- round(probcor_upper_HPD[2],2)
+Table3[3,3] <- round(probcor_upper_HPD[3],2)
+Table3[4,3] <- round(probcor_upper_HPD[4],2)
+Table3[5,3] <- round(probcor_upper_HPD[5],2)
+
+#################################
+
+posterior.mode(t2_probcormod.1$Sol)
+sqrt(diag(var(t2_probcormod.1$Sol)))
 posterior.mode(t2_probcormod.1$Sol)
 HPDinterval(t2_probcormod.1$Sol)
 
@@ -17,7 +63,67 @@ autocorr.diag(t2_probcormod.1$VCV)
 heidel.diag(t2_probcormod.1$VCV)  
 geweke.diag(t2_probcormod.1$VCV)
 
-#Making predictions with t2_probcormod.1
+#Making predictions with t2_probcormod.1 for social lizards 
+
+#Using predict.MCMCglmm
+
+
+newdata1=data.frame(Treatment = rep((c(1,0)), each=30),
+                    Trial = c(1:30),
+                    Batch = factor(c(1)))
+
+Correct<-0
+
+test1<-predict.MCMCglmm(t2_probcormod.1, newdata=newdata1, type="response", interval="confidence", verbose = TRUE)
+
+predict.MCMCglmm(t2_probcormod.1, marginal = t2_probcormod.1$Random$formula, type="response", interval="confidence", verbose = TRUE)
+
+str(t2_probcormod.1)
+t2_probcormod.1$Random
+
+summary(t2_probcormod.1)
+
+
+#By hand
+
+newdata1=data.frame(Treatment = 1,
+                   Trial = c(rep(1:30)),
+                   Batch = 1)
+
+
+
+X <-model.matrix(~Treatment+Trial+Batch+Treatment*Trial, data=newdata1)
+
+V <-rowSums(t2_probcormod.1$VCV)
+
+beta <-t2_probcormod.1$Sol
+
+c2 <- (16 * sqrt(3)/(15 * pi))^2
+
+pred1<-t(plogis(t(beta%*%t(X)/sqrt(1+c2*V))))
+
+socialprob<-colMeans(pred1)
+
+#Predict for control lizards
+
+newdata2=data.frame(Treatment = 0,
+                   Trial = c(rep(1:30)),
+                   Batch = 1)
+
+
+X <-model.matrix(~Treatment+Trial+Batch+Treatment*Trial, data=newdata2)
+
+V <-rowSums(t2_probcormod.1$VCV)
+
+beta <-t2_probcormod.1$Sol
+
+c2 <- (16 * sqrt(3)/(15 * pi))^2
+
+pred2<-t(plogis(t(beta%*%t(X)/sqrt(1+c2*V))))
+
+controlprob <-colMeans(pred2)
+
+ #Hand calculations
 
   Social = 1
   Control = 0
@@ -84,9 +190,10 @@ y2.probcor.s<-assocpred_probcor_dec[assocpred_probcor_dec$Treatment == "1",5] #U
 y3.probcor.s <-c(y1.probcor.s,y2.probcor.s)
 
 pdf("output/fig/t2_probcor.pdf") 
-plot(Correct~Trial, assocdat, ylim=c(0,1), xlim=c(1,30), ann = FALSE, type='n')
-mtext("Trial", side = 1, line = 3, cex=1.2)
-mtext("Predicted probability of correct choice", side = 2, line = 3, cex=1.2)
+par(mar=c(5, 5, 4, 2) + 0.1)
+plot(Correct~Trial, assocdat, ylim=c(0,1), xlim=c(1,25), ann = FALSE, type='n', cex.axis=1.5)
+mtext("Trial", side = 1, line = 3, cex=1.5)
+mtext("Predicted probability of correct choice", side = 2, line = 3, cex=1.5)
 
 polygon(x3, y3.probcor.c, col=rgb(0,0,0,0.4), border=NA) #control
 polygon(x3, y3.probcor.s, col=rgb(190,190,190,120, max=255), border=NA) #social
@@ -94,9 +201,8 @@ polygon(x3, y3.probcor.s, col=rgb(190,190,190,120, max=255), border=NA) #social
 lines(meanFit~Trial, data = assocdat_probcor_pred[assocdat_probcor_pred$Treatment=="0",], col="gray27", lwd=3) #control
 lines(meanFit~Trial, data = assocdat_probcor_pred[assocdat_probcor_pred$Treatment=="1",], col="gray47", lwd=3, lty=2)   
 
-legend(x=22, y=0.20, legend=c("Social", "Control"),pch=c(15,15), col= c(rgb(0,0,0,0.4), rgb(190,190,190,120, max=255)), pt.cex=3, bty="n", y.intersp=2, x.intersp=2, cex=1.2)   
+legend(x=16, y=0.25, legend=c("Social", "Control"),pch=c(15,15), col= c(rgb(0,0,0,0.4), rgb(190,190,190,120, max=255)), pt.cex=3, bty="n", y.intersp=2, x.intersp=2, cex=1.5)   
 
-dev.off()
 
 ############################
 
@@ -106,6 +212,23 @@ plot(t2_correctonly.1)
 summary(t2_correctonly.1)
 posterior.mode(t2_correctonly.1$Sol)
 HPDinterval(t2_correctonly.1$Sol)
+
+####Table 3 continues - just need interaction for this model
+
+posterior.mode(t2_correctonly.1$Sol)
+coronly_1_lower <- HPDinterval(t2_correctonly.1$Sol)[,1]
+coronly_1_upper <- HPDinterval(t2_correctonly.1$Sol)[,2]
+
+#Est
+Table3[5,4] <- round(posterior.mode(t2_correctonly.1$Sol)[5],2)
+
+#L
+Table3[5,5] <- round(coronly_1_lower[5],2)
+
+#U
+Table3[5,6] <- round(coronly_1_upper[5],2)
+
+#####
 
 autocorr.diag(t2_correctonly.1$Sol)
 heidel.diag(t2_correctonly.1$Sol)  
@@ -187,6 +310,33 @@ summary(t2_correctonly.2)
 posterior.mode(t2_correctonly.2$Sol)
 HPDinterval(t2_correctonly.2$Sol)
 
+####Table 3 continues - just need main effects for this model
+
+posterior.mode(t2_correctonly.2$Sol)
+coronly_2_lower <- HPDinterval(t2_correctonly.2$Sol)[,1]
+coronly_2_upper <- HPDinterval(t2_correctonly.2$Sol)[,2]
+
+#Est
+Table3[1,4] <- round(posterior.mode(t2_correctonly.2$Sol)[1],2)
+Table3[2,4] <- round(posterior.mode(t2_correctonly.2$Sol)[2],2)
+Table3[3,4] <- round(posterior.mode(t2_correctonly.2$Sol)[3],2)
+Table3[4,4] <- round(posterior.mode(t2_correctonly.2$Sol)[4],2)
+
+#L
+Table3[1,5] <- round(coronly_2_lower[1],2)
+Table3[2,5] <- round(coronly_2_lower[2],2)
+Table3[3,5] <- round(coronly_2_lower[3],2)
+Table3[4,5] <- round(coronly_2_lower[4],2)
+
+#U
+Table3[1,6] <- round(coronly_2_upper[1],2)
+Table3[2,6] <- round(coronly_2_upper[2],2)
+Table3[3,6] <- round(coronly_2_upper[3],2)
+Table3[4,6] <- round(coronly_2_upper[4],2)
+
+write.csv(Table3, file="Table3a.csv")
+
+###########################
 autocorr.diag(t2_correctonly.2$Sol)
 heidel.diag(t2_correctonly.2$Sol)  
 geweke.diag(t2_correctonly.2$Sol)
