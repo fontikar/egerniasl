@@ -1,16 +1,17 @@
 #Setting working directory
 getwd()
 setwd("C:/Users/xufeng/Dropbox/social learning/output/data/")
-setwd("~/Dropbox/Egernia striolata social learning//output/data/")
+setwd("~/Dropbox/Egernia striolata social learning/")
 
 #load library you need
 library(plyr)
 library(MASS)
 library(lme4)
 library(plyr)
+library(survival)
 
 #Read data
-instrumdat <- read.csv("task1_finaldat.csv", stringsAsFactors = FALSE)
+instrumdat <- read.csv("output/data/task1_finaldat.csv", stringsAsFactors = FALSE)
 head(instrumdat) #261 obs
 str(instrumdat)
 
@@ -18,6 +19,7 @@ str(instrumdat)
 instrumdat$LizardID <- as.factor(instrumdat$LizardID)
 instrumdat$Batch <- as.factor(instrumdat$Batch)
 instrumdat$Treatment <- as.factor(instrumdat$Treatment)
+instrumdatlt <- as.factor(instrumdat$lt)
 instrumdat$Date <-as.Date(instrumdat$Date, format="%m/%d/%Y")
 instrumdat$Time <- as.factor(instrumdat$Time)
 
@@ -53,11 +55,14 @@ length((unique(instrumdat[instrumdat$Treatment == "C",2]))) # n = 13 for control
 
 
 #Proportion of lizards that learnt per trial
+
+instrumdat[instrumdat$learnt == "0",]
 table(instrumdat$Trial)
 
 library(plyr)
 
-instrum_proplearndat<- ddply(.data=instrumdat, .(Trial, Treatment), summarise, sample_size = length(Correct))
+instrum_proplearndat<- ddply(.data=instrumdat, .(Trial, Treatment), summarise, learnt = sum((lt==0)), sample_size = length(LizardID), proportion = round(learnt/sample_size, 2))
+
 
 instrum_proplearndat$Treatment <- as.character(instrum_proplearndat$Treatment)
 instrum_proplearndat$Treatment[instrum_proplearndat$Treatment == "SL"] <- "1"
@@ -86,7 +91,7 @@ Cprop <-instrum_proplearndat[instrum_proplearndat$Treatment == "0",]
 #Plotting figure propportion learnt over trials
 pdf("Figure1A-B.pdf", 13,7)
 
-par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
+par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2), las=1)
 
 plot(proportion~Trial, data=instrum_proplearndat, pch=c(1,19), col=("black"), cex=1.5, ylim = c(0,1), ann=F, xaxt = "n", type="n")
 
@@ -295,3 +300,106 @@ trialdat<-ddply(.data=instrumdat, .(LizardID, Treatment), summarise, Number_of_T
 
 write.csv(trialdat, "Instrumental_Table.csv")
 
+#####
+
+
+# Robustness of learning criteria
+split1<-split(instrumdat, instrumdat$LizardID)
+
+
+Robust<-function(x){
+  {
+    start<-sum(x$lt == 1)+1
+    test_1<-x[start:nrow(x),"Correct"]
+    aftertrials<-length(test_1) 
+    correct_after<-sum(test_1 == 1)
+    propcorrect_after<-round((sum(test_1 == 1))/(length(test_1)),2) 
+  }
+  vec<-data.frame(start,aftertrials,correct_after,propcorrect_after)
+}
+
+Criteria_robust<-lapply(split1, function(x) Robust(x))# 3 lizards below 80% mark
+
+split1
+
+#Motivation
+unprocessed1 <-read.csv("data/Task1.csv")
+
+unprocessed1$TubID <- as.factor(unprocessed1$TubID)
+unprocessed1$LizardID <- as.factor(unprocessed1$LizardID)
+str(unprocessed1)
+
+rawdat1 <- split(unprocessed1, unprocessed1$LizardID)
+
+
+NaTest <-function(x){
+  {
+    {
+      {
+        {
+          NoAttempt<-sum(is.na(x$Correct))
+        }
+        TrialsGiven<-max(x$Trial)
+      }
+      PropAttempt<-round(((TrialsGiven-NoAttempt)/TrialsGiven),2)
+    }
+    ReachCriteria<-PropAttempt>=0.85
+  }
+  checking<-data.frame(NoAttempt,TrialsGiven,PropAttempt,ReachCriteria)
+}
+
+motivdat1 <- as.vector(lapply(rawdat1, function(x) NaTest(x)))
+
+###################
+#Survival analysis#
+###################
+
+instrum_learndat <- ddply(.data=instrumdat, .(LizardID, Trial, Treatment), summarise, lt = lt, did.it.learn = learnt)
+instrum_learndat
+
+instrum_surv_dat <-  ddply(.data=instrum_learndat, .(LizardID, Treatment), summarise, Time = sum(lt), Event = unique(did.it.learn))
+
+str(instrum_surv_dat)
+
+instrum_surv_dat$Treatment <- as.character(instrum_surv_dat$Treatment)
+instrum_surv_dat[instrum_surv_dat$Treatment == "SL", 2] <- "1"
+instrum_surv_dat[instrum_surv_dat$Treatment == "C", 2] <- "0"
+instrum_surv_dat$Treatment <- as.factor(instrum_surv_dat$Treatment)
+
+#Data for control group 
+
+fit_instru_con<-survfit(Surv(Time[Treatment == "0"],Event[Treatment == "0"])~1,data=instrum_surv_dat)
+
+par(mfrow=c(1,1), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2), cex.lab=1.5)
+
+plot(fit_instru_con, xlab="Trial Number")
+title(ylab = list("Probability of NOT learning", cex=1.5), line =3.5)
+
+#plotting lines for social learning group
+fit_instru_sock<-survfit(Surv(Time[Treatment == "1"],Event[Treatment == "1"])~1,data=instrum_surv_dat)
+
+summary(fit_instru_sock)
+
+plot(fit_instru_sock, xlab="Trial Number")
+
+x<-c( seq(0,6), 6, seq(6,7)) 
+length(x)
+y<-c(1,1,1,1,1,1,1,0.0667,0.0667, 0.0667)
+length(y)
+
+lines(x,y,col="orange2",lwd=2)
+
+up<-c(1,1,1,1,1,1,1,0.443,0.443, 0.443)
+length(up)
+
+lines(x,up,col="orange2",lwd=2, lty= 3)
+
+lo<-c(1,1,1,1,1,1,1,0.01 ,0.01, 0.01 )
+length(lo)
+
+lines(x,lo,col="orange2",lwd=2, lty= 3)
+
+###################
+
+wilcox.test(0.15384615,0.06666667)
+# W=1, p=1

@@ -1,7 +1,7 @@
 #Setting working directory
 getwd()
 setwd("C:/Users/xufeng/Dropbox/social learning/")
-setwd("~/Dropbox/Egernia striolata social learning/output/data/")
+setwd("~/Dropbox/Egernia striolata social learning/")
 
 # install.packages("MCMCglmm")
 
@@ -10,9 +10,10 @@ library(plyr)
 library(lme4)
 library(MASS)
 library(MCMCglmm)
+library(survival)
 
 #Read data
-assocdat <- read.csv("task2_final.csv", stringsAsFactors = FALSE)
+assocdat <- read.csv("output/data/task2_final.csv", stringsAsFactors = FALSE)
 head(assocdat)
 str(assocdat)
 
@@ -40,7 +41,7 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
 
               #Proportion of lizards that learnt per trial
           
-              assoc_proplearndat <- ddply(.data=assocdat, .(Trial, Treatment), summarise, sample_size = length(Correct))
+              assoc_proplearndat <- ddply(.data=assocdat, .(Trial, Treatment), summarise, learnt = sum(lt==0),sample_size = length(Correct), proportion = round(learnt/sample_size,2))
               assoc_proplearndat <-assoc_proplearndat[with(assoc_proplearndat, order(Treatment)), ]
               
               condata <-assocdat[assocdat$Treatment == "0",]  
@@ -102,19 +103,61 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
               detach(btrial)
               
 #Trying my own 
-              assoc_learndat <- ddply(.data=assocdat, .(LizardID, Trial, Treatment), summarise, Event = lt)
-              myfit <- survfit(Surv(assoc_learndat$Trial, assoc_learndat$Event) ~ assoc_learndat$Treatment)
-              myfit2<-summary(myfit)
+assoc_learndat <- ddply(.data=assocdat, .(LizardID, Trial, Treatment), summarise, lt = lt)
+
+instrum_learndat <- ddply(.data=instrumdat, .(LizardID, Trial, Treatment), summarise, lt = lt, did.it.learn = learnt)
+instrum_learndat
+
+instrum_surv_dat <-  ddply(.data=instrum_learndat, .(LizardID, Treatment), summarise, Time = sum(lt), Event = unique(did.it.learn))
+
+fit_instru<-survfit(Surv(Time,Event)~Treatment,data=instrum_surv_dat)
+plot(fit_instru, xlab="Trial", ylab='Learning Probability')
+summary(fit_instru)
+
+str(summary(fit_instru))
+  assoc_learndat$lt <- as.character(assoc_learndat$lt)
+  assoc_learndat$lt[assoc_learndat$lt == "0"] <- "3"
+  assoc_learndat$lt[assoc_learndat$lt == "1"] <- "0"
+  assoc_learndat$lt[assoc_learndat$lt == "3"] <- "1"
+  assoc_learndat$lt <- as.numeric(assoc_learndat$lt)
+
+  str(assoc_learndat)
+
+myfit <- coxph(Surv(time = assoc_learndat$Trial, event = assoc_learndat$lt) ~ assoc_learndat$Treatment)
+
+myfit
+
+summary(myfit)
               
-              H.hat <- -log(myfit2$surv)
-              H.hat <-c(H.hat, tail(H.hat,1))
-              
-              plot(myfit)
-              
-              plot(myfit$time, H.hat)
+#Checking Proportional Hazards Assumption LOOK OK! 
+
+cox.zph(myfit)
+plot(cox.zph(myfit))
+
+# Plotting
+
+summary(survfit(myfit))
+
+plot(survfit(myfit), xlab="Trials", ylab="Proportion that did not learn")
+
+#K-M
+
+myfit.1 <- survfit(Surv(time = assoc_learndat$Trial, event = assoc_learndat$lt) ~ assoc_learndat$Treatment)
+plot(myfit.1)
+
+library(OIsurv)
+
+socialcb <- Surv(time = assoc_learndat$Trial[assoc_learndat$Treatment == "1"], event = assoc_learndat$lt[assoc_learndat$Treatment == "1"])
+
+controlcb <- Surv(time = assoc_learndat$Trial[assoc_learndat$Treatment == "0"], event = assoc_learndat$lt[assoc_learndat$Treatment == "0"])
+
+confBands(socialcb, confType = "plain", confLevel = 0.90, type = 'hall')
+
+#Not working
 
 
-              # Mean number of trials taken to learn
+
+ # Mean number of trials taken to learn
               
                 assoclearntdat<-assocdat[assocdat$learnt ==1,]
                 length(unique(assoclearntdat$LizardID)) #All lizards learnt
@@ -277,7 +320,6 @@ incor_newdat$lower <- incordpred$fit - incordpred$se.fit
 
 #Plotting mean incorrect choices
 
-
 par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
 
 pdf("Task2_predictedMeanErrors.pdf", 7, 7)
@@ -326,7 +368,7 @@ heidel.diag(probcor.1$VCV)
 geweke.diag(probcor.1$VCV)
 
 # Robustness of learning criteria
-split1<-split(assocdat, assocdat$LizardID)
+split2<-split(assocdat, assocdat$LizardID)
 
 
 Robust<-function(x){
@@ -340,9 +382,92 @@ Robust<-function(x){
 vec<-data.frame(start,aftertrials,correct_after,propcorrect_after)
 }
 
-Criteria_robust<-lapply(split1, function(x) Robust(x))# 3 lizards below 80% mark
+Criteria_robust<-lapply(split2, function(x) Robust(x))
 
-split1
+split2
 
+
+#Motivation:
+unprocessed2 <-read.csv("data/Task2.csv")
+
+unprocessed2$TubID <- as.factor(unprocessed2$TubID)
+unprocessed2$LizardID <- as.factor(unprocessed2$LizardID)
+str(unprocessed2)
+
+rawdat2 <- split(unprocessed2, unprocessed2$LizardID)
+
+
+NaTest <-function(x){
+  {
+    {
+      {
+        {
+          NoAttempt<-sum(is.na(x$Correct))
+        }
+        TrialsGiven<-max(x$Trial)
+      }
+      PropAttempt<-round(((TrialsGiven-NoAttempt)/TrialsGiven),2)
+    }
+    ReachCriteria<-PropAttempt>=0.85
+  }
+  checking<-data.frame(NoAttempt,TrialsGiven,PropAttempt,ReachCriteria)
+}
+
+motivdat2 <- as.vector(lapply(rawdat2, function(x) NaTest(x)))
+
+
+###################
+#Survival analysis#
+###################
+
+assoc_learndat <- ddply(.data=assocdat, .(LizardID, Trial, Treatment), summarise, lt = lt, did.it.learn = learnt)
+assoc_learndat
+
+assoc_surv_dat <-  ddply(.data=assoc_learndat, .(LizardID, Treatment), summarise, Time = sum(lt), Event = unique(did.it.learn))
+
+#Data to plot control
+
+fit_assoc_con<-survfit(Surv(Time[Treatment == "0"],Event[Treatment == "0"])~1,data=assoc_surv_dat)
+
+#Plotting learning curve for CONTROL
+pdf("Task2_survanalysis.pdf", 7, 7)
+
+par(mfrow=c(1,1), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2), cex.lab=1.5)
+
+plot(fit_assoc_con, xlab="Trial Number")
+title(ylab = list("Probability of NOT learning", cex=1.5), line =3.5)
+
+#plotting lines for social learning group
+fit_assoc_sock<-survfit(Surv(Time[Treatment == "1"],Event[Treatment == "1"])~1,data=assoc_surv_dat)
+
+summary(fit_assoc_sock)
+
+x<-c( seq(1:8), seq(8,10), seq(10,15), seq(15,25)) 
+length(x)
+y<-c(1,1,1,1,1,1,1,1,0.2,0.2,0.2,0.133,0.133,0.133,0.133,0.133,0.133,0,0,0,0,0,0,0,0,0,0,0) 
+length(y)
+
+lines(x,y,col="orange2",lwd=2)
+
+x2<-c( seq(1:8), seq(8,10), 10)
+length(x2)
+up<-c(1,1,1,1,1,1,1,1,0.550,0.550,0.550,0.484)
+length(up)
+
+lines(x2,up,col='orange2',lty=3,lwd=2)
+
+lo<-c(1,1,1,1,1,1,1,1, 0.0727, 0.0727, 0.0727 ,0.0367)
+length(lo)
+
+lines(x2,lo,col='orange2',lty=3,lwd=2)
+
+dev.off()
+
+#getting a p-value to see if the learning curve are different: NO
+con <- summary(fit_assoc)$surv[1:10]
+sock <- summary(fit_assoc)$surv[11:13]
+
+wilcox.test(con,sock)
+# W=24.5, p=-.12777
               
               
