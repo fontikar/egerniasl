@@ -1,6 +1,6 @@
 #Setting working directory
 getwd()
-setwd("C:/Users/xufeng/Dropbox/social learning/")
+#setwd("C:/Users/xufeng/Dropbox/social learning/")
 setwd("~/Dropbox/Egernia striolata social learning/")
 
 # install.packages("MCMCglmm")
@@ -41,6 +41,10 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
 
               #Proportion of lizards that learnt per trial
           
+pdf("Task2_Proplearnt.pdf", 13, 7)
+
+par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
+
               assoc_proplearndat <- ddply(.data=assocdat, .(Trial, Treatment), summarise, learnt = sum(lt==0),sample_size = length(Correct), proportion = round(learnt/sample_size,2))
               assoc_proplearndat <-assoc_proplearndat[with(assoc_proplearndat, order(Treatment)), ]
               
@@ -62,11 +66,6 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
               Cprop <-assoc_proplearndat[assoc_proplearndat$Treatment == "0",]
               
               #Plotting figure proportion learnt over trials
-              
-              pdf("Task2_Proplearnt.pdf", 13, 7)
-              
-              par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
-              
               plot(proportion~Trial, data=assoc_proplearndat, pch=c(1,19), col=("black"), cex=1.5, ylim = c(0,1), xlim=c(1,30), ann=F, cex.axis=1.5, type= "n", xaxt = "n")
               
               axis(1, at=c(1:30))
@@ -86,76 +85,55 @@ length((unique(assocdat[assocdat$Treatment == "0",1]))) # n = 13 for control liz
 
               #dev.off()
               
-#####Cumulative Hazard analysis
-    library(survival) ; library(KMsurv)
-    
-  #Examples
-              data(tongue); attach(tongue)
-              my.surv <- Surv(time[type==1], delta[type==1])
-              my.fit <- summary(survfit(my.surv~1))
-              H.hat <- -log(my.fit$surv); H.hat <- c(H.hat, H.hat[length(H.hat)])            
-              detach(tongue)
               
-              data(btrial); attach(btrial)
-              head(btrial); tail(btrial)
-              str(btrial)
-              survdiff(Surv(time, death) ~ im)
-              detach(btrial)
+              ####Cox Proportional Hazard analysis
+            
+              assoc_surv_dat <- ddply(.data=assocdat, .(LizardID, Treatment, Batch), summarise, Time = sum(lt), Event = unique(learnt))
               
-#Trying my own 
-assoc_learndat <- ddply(.data=assocdat, .(LizardID, Trial, Treatment), summarise, lt = lt)
-
-instrum_learndat <- ddply(.data=instrumdat, .(LizardID, Trial, Treatment), summarise, lt = lt, did.it.learn = learnt)
-instrum_learndat
-
-instrum_surv_dat <-  ddply(.data=instrum_learndat, .(LizardID, Treatment), summarise, Time = sum(lt), Event = unique(did.it.learn))
-
-fit_instru<-survfit(Surv(Time,Event)~Treatment,data=instrum_surv_dat)
-plot(fit_instru, xlab="Trial", ylab='Learning Probability')
-summary(fit_instru)
-
-str(summary(fit_instru))
-  assoc_learndat$lt <- as.character(assoc_learndat$lt)
-  assoc_learndat$lt[assoc_learndat$lt == "0"] <- "3"
-  assoc_learndat$lt[assoc_learndat$lt == "1"] <- "0"
-  assoc_learndat$lt[assoc_learndat$lt == "3"] <- "1"
-  assoc_learndat$lt <- as.numeric(assoc_learndat$lt)
-
-  str(assoc_learndat)
-
-myfit <- coxph(Surv(time = assoc_learndat$Trial, event = assoc_learndat$lt) ~ assoc_learndat$Treatment)
-
-myfit
-
-summary(myfit)
+              assoc_surv_dat
               
-#Checking Proportional Hazards Assumption LOOK OK! 
-
-cox.zph(myfit)
-plot(cox.zph(myfit))
-
-# Plotting
-
-summary(survfit(myfit))
-
-plot(survfit(myfit), xlab="Trials", ylab="Proportion that did not learn")
-
-#K-M
-
-myfit.1 <- survfit(Surv(time = assoc_learndat$Trial, event = assoc_learndat$lt) ~ assoc_learndat$Treatment)
-plot(myfit.1)
-
-library(OIsurv)
-
-socialcb <- Surv(time = assoc_learndat$Trial[assoc_learndat$Treatment == "1"], event = assoc_learndat$lt[assoc_learndat$Treatment == "1"])
-
-controlcb <- Surv(time = assoc_learndat$Trial[assoc_learndat$Treatment == "0"], event = assoc_learndat$lt[assoc_learndat$Treatment == "0"])
-
-confBands(socialcb, confType = "plain", confLevel = 0.90, type = 'hall')
-
-#Not working
-
-
+              egsurv.fit1 <- coxph(Surv(Time, Event)~strata(Treatment)*Batch, data=assoc_surv_dat)
+              summary(egsurv.fit1)
+              
+              egsurv.fit2 <- coxph(Surv(Time, Event)~strata(Treatment)+Batch, data=assoc_surv_dat)
+              summary(egsurv.fit2)
+              summary(survfit(egsurv.fit2))
+              
+              egsurv.fit2a <- coxph(Surv(Time, Event)~Treatment+Batch, data=assoc_surv_dat)
+              summary(egsurv.fit2a)
+              
+              #Plotting these curves
+              pdf("Fig2A-D.pdf", 14, 14)
+              
+              par(mfrow=c(2,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2), cex.lab=1.5, las=1)
+              
+              plot(survfit(egsurv.fit2), lty=c(2,1), lwd=2)
+              
+              #Control
+              con_x_trial <-  c(8, 9, 9, 10, 10, 12, 12, 13, 13, 14, 14, 15, 15, 20, 20, 21, 21, 26, 26)
+              #summary(survfit(egsurv.fit2))$time[1:10]
+              
+              con_y_up <- round(rep(summary(survfit(egsurv.fit2))$upper[1:10], each = 2),2)[1:19]
+              
+              con_y_low <- round(rep(summary(survfit(egsurv.fit2))$lower[1:10], each = 2),2)[1:19]
+              
+              lines(con_x_trial, con_y_low)
+              lines(con_x_trial[1:18], con_y_up[1:18])
+              
+              #Social
+              soc_x_trial <- c(8,8,10,10,15,15)
+              summary(survfit(egsurv.fit2))$time[11:13]
+              soc_y_up <- c(1, round(rep(summary(survfit(egsurv.fit2))$upper[11:13], each =2)[1:5],2))
+              soc_y_low <- c(1,round(rep(summary(survfit(egsurv.fit2))$lower[11:13], each =2)[1:5],2))
+              
+              lines(soc_x_trial, soc_y_low, lty= 3)
+              lines(soc_x_trial, soc_y_up, lty= 3)
+              
+             # legend(0 ,0.15,  c("Control", "Social"), lty= c(2, 1), bty='n', cex=1.2, lwd = 2)
+              title(ylab = list("Proportion of lizards that have not learnt", cex=1.5), line =3)
+              title(xlab = list("Trial Number", cex=1.5))
+              mtext("a)", adj = -0.15, padj = -0.2, cex=1.4)
+      
 
  # Mean number of trials taken to learn
               
@@ -198,8 +176,8 @@ confBands(socialcb, confType = "plain", confLevel = 0.90, type = 'hall')
               assoc_newdat <-data.frame(Treatment = c(0, 1),
                                   Batch = rep(1,2))
               
-              assoc_newdat$Treatment <- as.factor(newdat$Treatment)
-              assoc_newdat$Batch <- as.factor(newdat$Batch)
+              assoc_newdat$Treatment <- as.factor(assoc_newdat$Treatment)
+              assoc_newdat$Batch <- as.factor(assoc_newdat$Batch)
               
               assoc_trials_pred <-predict.glm(fit_1, type= "response", se.fit = T, newdata=assoc_newdat)
               
@@ -324,7 +302,7 @@ par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2))
 
 pdf("Task2_predictedMeanErrors.pdf", 7, 7)
 
-barplot(incor_newdat$pred, ylim = c(0, 5), xlim =c(0,3.5), space=0.5, col=c("white", "grey"), cex.axis=1.5) 
+barplot(incor_newdat$pred, ylim = c(0, 4), xlim =c(0,3.5), space=0.5, col=c("white", "grey"), cex.axis=1.5) 
 box()
 
 title(ylab = list("Mean number of errors", cex=1.5), line =3)
@@ -338,7 +316,8 @@ arrows(x0 = up.value, y0 = incor_newdat$pred, x1 = up.value, y1 = incor_newdat$u
 arrows(x0 = down.value, y0 = incor_newdat$pred,, x1 = down.value, y1 = incor_newdat$lower, length = 0.2, angle = 90, lwd=2)
 
 segments(x0 =1, y0=3.5, x1 = 2.6, y1 =3.5, lwd= 2)
-text(x=1.8, y=4, labels="P < 0.001", cex=1.5, font=1)
+text(x=1.8, y=3.65, labels="P < 0.001", cex=1.5, font=1)
+mtext("c)", adj = -0.15, padj = -0.2, cex=1.4)
 
 dev.off()
 
@@ -469,5 +448,35 @@ sock <- summary(fit_assoc)$surv[11:13]
 
 wilcox.test(con,sock)
 # W=24.5, p=-.12777
-              
-              
+
+#######################################################
+
+newsurvdat <- data.frame(Treatment = rep(c(1,0), each = 26),
+                         Batch = rep(c(2,2), each = 26), 
+                         Trial = seq(1,26)) 
+
+newsurvdat.batch1 <- data.frame(Treatment = rep(c(1,0), each = 26),
+                         Batch = rep(c(1,1), each = 26), 
+                         Trial = seq(1,26)) 
+
+newsurvdat.batch1$Treatment <- as.factor(newsurvdat.batch1$Treatment)
+newsurvdat.batch1$Batch <- as.factor(newsurvdat.batch1$Batch)
+
+newsurvdat$Treatment <- as.factor(newsurvdat$Treatment)
+newsurvdat$Batch <- as.factor(newsurvdat$Batch)
+
+str(summary(survfit(egsurv.fit2, newdata = newsurvdat)))
+plot(survfit(egsurv.fit2, newdata = newsurvdat))
+
+surv.ob <- survfit(egsurv.fit2)
+surv.ob$surv
+summary(survfit(egsurv.fit2, newdata = newsurvdat.batch1))
+
+
+##### Checking assumptions of the coxph model
+
+cox.zph(egsurv.fit2)
+cox.zph(egsurv.fit2a)
+cox.zph(egsurv.fit1)
+
+

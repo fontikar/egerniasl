@@ -1,6 +1,6 @@
 #Setting working directory
 getwd()
-setwd("C:/Users/xufeng/Dropbox/social learning/output/data/")
+#setwd("C:/Users/xufeng/Dropbox/social learning/output/data/")
 setwd("~/Dropbox/Egernia striolata social learning/")
 
 #load library you need
@@ -110,6 +110,63 @@ legend(7.5, 0.1, c("Control", "Social"), lty= c(1, 5), pch=c(1,19), cex=1.2, bty
 
 mtext("a)", adj = -0.15, padj = -0.20, cex=1.4)
 
+####Cox Proportional Hazard analysis
+
+instrum_surv_dat<- ddply(.data=instrumdat, .(LizardID, Treatment, Batch), summarise, Time = sum(lt), Event = unique(learnt))
+
+instrum_surv_dat$Treatment <- as.character(instrum_surv_dat$Treatment)
+instrum_surv_dat[instrum_surv_dat$Treatment == "SL", 2] <- "1"
+instrum_surv_dat[instrum_surv_dat$Treatment == "C", 2] <- "0"
+instrum_surv_dat$Treatment <- as.factor(instrum_surv_dat$Treatment)
+
+insurv.fit1 <- coxph(Surv(Time, Event)~strata(Treatment)*Batch, data=instrum_surv_dat)
+summary(insurv.fit1)
+
+insurv.fit2 <- coxph(Surv(Time, Event)~strata(Treatment)+Batch, data=instrum_surv_dat)
+summary(insurv.fit2)
+summary(survfit(insurv.fit2))
+
+insurv.fit2a <- coxph(Surv(Time, Event)~Treatment+Batch, data=instrum_surv_dat)
+summary(insurv.fit2a)
+
+cox.zph(insurv.fit2)
+cox.zph(insurv.fit2a)
+cox.zph(insurv.fit1)
+
+#Plotting these curves
+pdf("Figure1A-B.pdf", 13,7)
+
+par(mfrow=c(1,2), mar = c(4, 5, 1.5, 1.5), cex.axis=1.5, mai=c(1,1,0.6,0.2), las=1)
+
+plot(survfit(insurv.fit2), lty=c(2,1), lwd=2)
+
+#Control
+con_x_trial <-  c(6, 6, 8)
+summary(survfit(insurv.fit2))
+
+con_y_up <- c(1,0.615, 0.615)
+con_y_low <- c(1, 0.066, 0.066)
+
+#lines(con_x_trial, con_y_low)
+#lines(con_x_trial, con_y_up)
+
+#Social
+soc_x_trial <- c(8,8,10,10,15,15)
+summary(survfit(insurv.fit2))$time[11:13]
+soc_y_up <- c(1, round(rep(summary(survfit(insurv.fit2))$upper[11:13], each =2)[1:5],2))
+soc_y_low <- c(1,round(rep(summary(survfit(insurv.fit2))$lower[11:13], each =2)[1:5],2))
+
+lines(soc_x_trial, soc_y_low, lty= 3)
+lines(soc_x_trial, soc_y_up, lty= 3)
+
+#legend(0.3,0.1,  c("Control", "Social"), lty= c(2, 1), bty='n', cex=1.2, lwd = 2, x.intersp = 1.5)
+title(ylab = list("Proportion of lizards that have not learnt", cex=1.5), line =3)
+title(xlab = list("Trial Number", cex=1.5))
+
+mtext("a)", adj = -0.15, padj = -0.20, cex=1.4)
+
+#dev.off()
+
 
 # Mean number of trials taken to learn
 
@@ -150,6 +207,7 @@ write.csv(Table.1A, file = "Table.1A.csv")
 
 newdat <-data.frame(Treatment = c(0, 1), Batch = c(1,1))
 newdat$Treatment <- as.factor(newdat$Treatment)
+newdat$Batch <- as.factor(newdat$Batch)
 
 trials_pred <-predict.glm(task1mod.1, type= "response", se.fit = T,newdata=newdat)
 
@@ -403,3 +461,5 @@ lines(x,lo,col="orange2",lwd=2, lty= 3)
 
 wilcox.test(0.15384615,0.06666667)
 # W=1, p=1
+
+
