@@ -1,6 +1,6 @@
 #Setting working directory
 setwd("C:/Users/xufeng/Dropbox/social learning")
-#setwd("/Users/fontikar/Dropbox/social learning")
+setwd("/Users/fontikar/Dropbox/Egernia striolata social learning")
 
 #Reading data
 eg.t3.dat <- read.csv("data/Task3.csv", stringsAsFactors = FALSE)
@@ -19,12 +19,101 @@ eg.t3.dat$Date <-as.Date(eg.t3.dat$Date, format="%m/%d/%Y")
 eg.t3.dat$Time <- as.factor(eg.t3.dat$Time)
 
 #Excluding NA in correct
-noNAs <-complete.cases(eg.t3.dat[,8])
+noNAs <-complete.cases(eg.t3.dat[,7])
 eg.t3.dat_2 <- eg.t3.dat[noNAs,] 
 
 #Split data 
 splitdat<-split(eg.t3.dat_2, eg.t3.dat_2$LizardID)
 head(splitdat)
+
+lizardids <-unique(eg.t3.dat_2$LizardID)
+
+#Lizards that learnt
+learnt.ids <- c("1468460", "1468510", "1468515", "1468516", "1469218", "1469229", "3369769", "3374264", "1469703")
+
+#Lizards that did learn
+eg.t3.learnt <- eg.t3.dat_2[eg.t3.dat_2$LizardID %in% learnt.ids,]
+
+#1468460 learnt on the last trial, need to exclude it or else criteria function won't work
+eg.t3.learnt.no460 <- eg.t3.learnt[!eg.t3.learnt$LizardID %in% "1468460",]
+
+eg.t3.learnt.no460$LizardID <- factor(eg.t3.learnt.no460$LizardID)
+str(eg.t3.learnt.no460)
+
+splitdat2<-split(eg.t3.learnt.no460, eg.t3.learnt.no460$LizardID)
+
+trialNum <- function(x){
+  {
+    x$Trial<-seq(1:nrow(x))
+  }
+  x
+}
+
+splitdat2 <- as.vector(lapply(splitdat2, function(x) trialNum(x)))
+
+
+Criteria<-function(x){
+  {
+    lt <- c()
+    for(i in 1:nrow(x)){ 
+      if(sum(x$Correct[i:(i+7)]) >= 7 && length(lt) < 1){
+        lt <- rep(1, i+8)
+        lt[length(lt):nrow(x)] <- rep(0)
+      } else { lt <- lt }
+    }
+    x$lt<-lt
+  }
+  x
+}
+
+
+splitdat3 <-lapply(splitdat2, function(x) Criteria(x))
+
+eg.t3.dat_4<-unsplit(splitdat3, eg.t3.learnt.no460$LizardID)
+str(eg.t3.dat_4)
+
+#Add in lizard 1468460 now
+
+eg.t3.learnt.460 <- eg.t3.learnt[eg.t3.learnt$LizardID %in% "1468460",]
+eg.t3.learnt.460 <- trialNum(eg.t3.learnt.460)
+eg.t3.learnt.460$lt <- rep(1, nrow(eg.t3.learnt.460))
+
+eg.t3.learnt.w460 <- rbind(eg.t3.dat_4, eg.t3.learnt.460)
+
+eg.t3.learnt.w460$Learnt <- rep(1, nrow(eg.t3.learnt.w460))
+
+#Lizards that did not learn
+eg.t3.nolearnt <- eg.t3.dat_2[!eg.t3.dat_2$LizardID %in% learnt.ids,]
+eg.t3.nolearnt$lt <- rep(1, nrow(eg.t3.nolearnt))
+eg.t3.nolearnt$Learnt <- rep(0, nrow(eg.t3.nolearnt))
+
+head(eg.t3.nolearnt) ; head(eg.t3.learnt.w460)
+
+#putting these two together
+
+eg.t3.dat_5 <- rbind(eg.t3.learnt.w460, eg.t3.nolearnt)
+
+#Merge Batch variables into this dataset
+
+batchdat <- read.csv("data/batch_allocations.csv", stringsAsFactors = FALSE)
+
+colnames(batchdat) <- c("Batch", "LizardID", "Treatment")
+batchdat<-batchdat[,1:2]
+batchdat$Batch <- as.factor(batchdat$Batch)
+batchdat$LizardID <-as.factor(batchdat$LizardID)
+
+str(batchdat)
+str(eg.t3.dat_5)
+
+eg.t3.dat_7 <-merge(batchdat, eg.t3.dat_5, by = "LizardID")
+eg.t3.dat_7
+
+write.csv(eg.t3.dat_7, "output/data/task3_final_v2.csv")
+
+getwd()
+
+
+#############################################################################################################
 
 #Remove lizards that did not learn first 1
 eg.t3.dat_3<-eg.t3.dat_2[!eg.t3.dat_2$LizardID == "1468506",]
@@ -269,7 +358,7 @@ str(batchdat)
 str(eg.t3.dat_6)
 
 eg.t3.dat_7<-merge(batchdat, eg.t3.dat_6, by = "LizardID")
-eg.t3.dat_7[1:100,]
+eg.t3.dat_7
 
 write.csv(eg.t3.dat_7, "output/data/task3_final.csv")
 

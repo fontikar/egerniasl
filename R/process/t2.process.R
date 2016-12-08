@@ -1,7 +1,9 @@
+rm(list = ls())
+
 #Setting working directory
 getwd()
 setwd("C:/Users/xufeng/Dropbox/social learning/")
-#setwd("/Users/fontikar/Dropbox/Egernia striolata social learning")
+setwd("/Users/fontikar/Dropbox/Egernia striolata social learning")
 
 eg.t2.dat <- read.csv("data/Task2.csv", stringsAsFactors = FALSE)
 
@@ -86,13 +88,16 @@ batchdat$LizardID <-as.factor(batchdat$LizardID)
 
 str(batchdat)
 
-levels(eg.t2.dat_4$LizardID) == levels(batchdat$ID)
+levels(eg.t2.dat_4$LizardID) == levels(batchdat$LizardID)
 
 eg.t2.dat_5<-merge(batchdat, eg.t2.dat_4, by = "LizardID")
 
+str(eg.t2.dat_5)
+
+unique(eg.t2.dat_5[eg.t2.dat_5$Batch == 1, c(1:4)])
+unique(eg.t2.dat_5[eg.t2.dat_5$Batch == 2, c(1:4)])
 
 #Writing the file
-
 
 getwd()
 
@@ -101,3 +106,23 @@ setwd("C:/Users/xufeng/Dropbox/social learning")
 write.csv(eg.t2.dat_5, "output/data/task2_final.csv")
 
 
+#Checking tally after reaching learning criterion
+
+splitdat6 <- split(eg.t2.dat_5, eg.t2.dat_5$LizardID)
+
+
+Robust<-function(x){
+  {
+    start<-sum(x$lt == 1)+1
+    test_1<-x[start:nrow(x),"Correct"]
+    aftertrials<- length(test_1)
+    correct_after<-sum(test_1)
+    propcorrect_after<-round((correct_after)/((aftertrials)),2)
+    output <- binom.test(x = correct_after, n = aftertrials, alternative = "greater")
+  }
+  vec<-data.frame(start, aftertrials,correct_after,propcorrect_after, output$p.value, output$p.value < 0.05 )
+}
+
+Criteria_robust <-lapply(splitdat6, function(x) Robust(x))
+
+unique(eg.t2.dat_5[,c(1,4)])
