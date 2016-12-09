@@ -32,20 +32,10 @@ saveRDS(probcor.1, file="output/t2_probcormod.1")
 correctonly.1 <- list()
 for(i in 1:3){
   set.seed(chains[i])
-  correctonly.1[[i]] <- MCMCglmm(Choose.only.correct.dish ~ Treatment*Trial+Batch, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 110000, thin = 100, prior=prior.test, burnin = 10000, data=assocdat, verbose= T)
+  correctonly.1[[i]] <- MCMCglmm(Choose.only.correct.dish ~ Treatment*Trial+Batch, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 5010000, thin = 5000, prior=prior.test, burnin = 10000, data=assocdat, verbose= T)
 }
 
 saveRDS(correctonly.1, file="output/t2_correctonly.1")
-
-#################################################################################################################################################
-
-correctonly.2 <- list()
-for(i in 1:3){
-  set.seed(chains[i])
-  correctonly.2[[i]] <- MCMCglmm(Choose.only.correct.dish ~ Treatment*Trial+Batch, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 1010000, thin = 1000, prior=prior.test, burnin = 10000, data=assocdat, verbose= T)
-}
-
-saveRDS(correctonly.2, file="output/t2_correctonly.2")
 
 #################################################################################################################################################
 
@@ -54,7 +44,7 @@ saveRDS(correctonly.2, file="output/t2_correctonly.2")
 correctonly.1.inrm <- list()
   for(i in 1:3){
     set.seed(chains[i])
-    correctonly.1.inrm[[i]] <- MCMCglmm(Choose.only.correct.dish ~ Treatment+Trial+Batch, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 110000, thin = 100, prior=prior.test, burnin = 10000, data=assocdat, verbose= T)
+    correctonly.1.inrm[[i]] <- MCMCglmm(Choose.only.correct.dish ~ Treatment+Trial+Batch, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 5010000, thin = 5000, prior=prior.test, burnin = 10000, data=assocdat, verbose= T)
 }
 
 saveRDS(correctonly.1.inrm, file="output/t2_correctonly.2")
@@ -64,7 +54,7 @@ saveRDS(correctonly.1.inrm, file="output/t2_correctonly.2")
 t2_batchcorrectonly.1 <- list()
 for(i in 1:3){
   set.seed(chains[i])
-  correctonly.1[[i]] <- MCMCglmm(Choose.only.correct.dish ~ Treatment*Trial+Treatment*Batch, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 110000, thin = 100, prior=prior.test, burnin = 10000, data=assocdat, verbose= T)
+  correctonly.1[[i]] <- MCMCglmm(Choose.only.correct.dish ~ Treatment*Trial+Treatment*Batch, random = ~us(1+Trial):LizardID, family = "categorical", nitt = 5010000, thin = 5000, prior=prior.test, burnin = 10000, data=assocdat, verbose= T)
 }
 
 saveRDS(t2_batchcorrectonly.1, file="output/t2_batchcorrectonly.1")
